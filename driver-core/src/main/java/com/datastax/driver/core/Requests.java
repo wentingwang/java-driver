@@ -20,9 +20,11 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+
+import org.jboss.netty.buffer.ChannelBuffer;
 
 import com.google.common.collect.ImmutableMap;
-import org.jboss.netty.buffer.ChannelBuffer;
 
 class Requests {
 
@@ -201,7 +203,8 @@ class Requests {
             SKIP_METADATA,
             PAGE_SIZE,
             PAGING_STATE,
-            SERIAL_CONSISTENCY;
+            SERIAL_CONSISTENCY,
+            UUID;
 
             public static EnumSet<Flag> deserialize(int flags) {
                 EnumSet<Flag> set = EnumSet.noneOf(Flag.class);
@@ -218,6 +221,7 @@ class Requests {
                 int i = 0;
                 for (Flag flag : flags)
                     i |= 1 << flag.ordinal();
+                System.out.println("Flag="+i);
                 return i;
             }
         }
@@ -227,7 +231,8 @@ class Requests {
                                                                                     false,
                                                                                     -1,
                                                                                     null,
-                                                                                    ConsistencyLevel.SERIAL);
+                                                                                    ConsistencyLevel.SERIAL,
+                                                                                    null);
 
         private final EnumSet<Flag> flags = EnumSet.noneOf(Flag.class);
         public final ConsistencyLevel consistency;
@@ -236,13 +241,15 @@ class Requests {
         public final int pageSize;
         public final ByteBuffer pagingState;
         public final ConsistencyLevel serialConsistency;
+        public final UUID clientID;
 
         public QueryProtocolOptions(ConsistencyLevel consistency,
                                     List<ByteBuffer> values,
                                     boolean skipMetadata,
                                     int pageSize,
                                     ByteBuffer pagingState,
-                                    ConsistencyLevel serialConsistency) {
+                                    ConsistencyLevel serialConsistency,
+                                    UUID clientID) {
 
             this.consistency = consistency;
             this.values = values;
@@ -250,6 +257,7 @@ class Requests {
             this.pageSize = pageSize;
             this.pagingState = pagingState;
             this.serialConsistency = serialConsistency;
+            this.clientID = clientID;
 
             // Populate flags
             if (!values.isEmpty())
@@ -262,6 +270,8 @@ class Requests {
                 flags.add(Flag.PAGING_STATE);
             if (serialConsistency != ConsistencyLevel.SERIAL)
                 flags.add(Flag.SERIAL_CONSISTENCY);
+            if (clientID != null)
+            	flags.add(Flag.UUID);
         }
 
         public void encode(ChannelBuffer dest) {
@@ -277,6 +287,8 @@ class Requests {
                 CBUtil.writeValue(pagingState, dest);
             if (flags.contains(Flag.SERIAL_CONSISTENCY))
                 CBUtil.writeConsistencyLevel(serialConsistency, dest);
+            if (flags.contains(Flag.UUID))
+            	CBUtil.writeUUID(clientID, dest);
         }
 
         public int encodedSize() {
@@ -290,6 +302,8 @@ class Requests {
                     size += CBUtil.sizeOfValue(pagingState);
                 if (flags.contains(Flag.SERIAL_CONSISTENCY))
                     size += CBUtil.sizeOfConsistencyLevel(serialConsistency);
+                if (flags.contains(Flag.UUID))
+                	size += CBUtil.sizeOfUUID(clientID);
                 return size;
         }
 
