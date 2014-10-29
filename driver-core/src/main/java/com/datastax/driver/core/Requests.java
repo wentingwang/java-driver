@@ -221,7 +221,7 @@ class Requests {
                 int i = 0;
                 for (Flag flag : flags)
                     i |= 1 << flag.ordinal();
-                System.out.println("Flag="+i);
+                //System.out.println("Flag="+i);
                 return i;
             }
         }
